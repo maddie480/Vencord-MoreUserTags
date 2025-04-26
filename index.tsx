@@ -19,7 +19,7 @@
 import { definePluginSettings } from "@api/Settings";
 import { Flex } from "@components/Flex";
 import { Devs } from "@utils/constants";
-import { getIntlMessage } from "@utils/discord";
+import { getCurrentChannel, getIntlMessage } from "@utils/discord";
 import { Margins } from "@utils/margins";
 import definePlugin, { OptionType } from "@utils/types";
 import { findByCodeLazy, findLazy } from "@webpack";
@@ -176,15 +176,15 @@ const settings = definePluginSettings({
 export default definePlugin({
     name: "MoreUserTags",
     description: "Adds tags for webhooks and moderative roles (owner, admin, etc.)",
-    authors: [Devs.Cyn, Devs.TheSun, Devs.RyanCaoDev, Devs.LordElias, Devs.AutumnVN],
+    authors: [Devs.Cyn, Devs.TheSun, Devs.RyanCaoDev, Devs.LordElias, Devs.AutumnVN, { name: "maddie480", id: 354341658352943115n }],
     settings,
     patches: [
         // add tags to the tag list
         {
             find: ".ORIGINAL_POSTER=",
             replacement: {
-                match: /(?=(\i)\[\i\.BOT)/,
-                replace: "$self.genTagTypes($1);"
+                match: /"SYSTEM_DM",(.{1,200}),(\w{1,100})}/,
+                replace: "\"SYSTEM_DM\",$1,$self.genTagTypes($2)}"
             }
         },
         {
@@ -212,17 +212,25 @@ export default definePlugin({
         {
             find: ".Types.ORIGINAL_POSTER",
             replacement: {
-                match: /;return\((\(null==\i\?void 0:\i\.isSystemDM\(\).+?.Types.ORIGINAL_POSTER\)),null==(\i)\)/,
-                replace: ";$1;$2=$self.getTag({...arguments[0],origType:$2,location:'chat'});return $2 == null"
+                match: /\.Types\.ORIGINAL_POSTER\),(\w+)}/,
+                replace: ".Types.ORIGINAL_POSTER),$self.getTag({channel: arguments[0].channel, message: arguments[0].message, user: arguments[0].user, origType: $1})}"
             }
         },
         // in the member list
         {
             find: "#{intl::GUILD_OWNER}),children:",
-            replacement: {
-                match: /(?<type>\i)=\(null==.{0,100}\.BOT;return null!=(?<user>\i)&&\i\.bot/,
-                replace: "$<type> = $self.getTag({user: $<user>, channel: arguments[0].channel, origType: $<user>.bot ? 0 : null, location: 'not-chat' }); return typeof $<type> === 'number'"
-            }
+            replacement: [
+                // remove early return if user is not a bot
+                {
+                    match: /\|\|!\w{1,100}\.bot\)return null/,
+                    replace: ")return null"
+                },
+                // capture return value
+                {
+                    match: /(?<type>\w{1,100})=(?<user>\w{1,100}).isClyde\(\)\?(?:.{1,100})\.AI:(?:.{1,100}).BOT;/,
+                    replace: "$&$<type> = $self.getTag({user: $<user>, channel: arguments[0].channel, origType: $<user>.isBot ? $<type> : null, location: 'not-chat' }); if (null == $<type>) return null;"
+                }
+            ]
         },
         // pass channel id down props to be used in profiles
         {
@@ -290,6 +298,8 @@ export default definePlugin({
             obj[`${name}-OP`] = ++i;
             obj[i] = `${name}-OP`;
         });
+
+        return obj;
     },
 
     isOPTag: (tag: number) => tag === Tag.Types.ORIGINAL_POSTER || tags.some(t => tag === Tag.Types[`${t.name}-OP`]),
@@ -335,7 +345,7 @@ export default definePlugin({
 
         let type = typeof origType === "number" ? origType : null;
 
-        channel ??= ChannelStore.getChannel(channelId!) as any;
+        channel ??= ChannelStore.getChannel(channelId!) as any ?? getCurrentChannel();
         if (!channel) return type;
 
         const settings = this.settings.store;
@@ -367,6 +377,7 @@ export default definePlugin({
                 break;
             }
         }
+
         return type;
     }
 });
