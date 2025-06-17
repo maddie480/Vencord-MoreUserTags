@@ -219,18 +219,10 @@ export default definePlugin({
         // in the member list
         {
             find: "#{intl::GUILD_OWNER}),children:",
-            replacement: [
-                // remove early return if user is not a bot
-                {
-                    match: /\|\|!\w{1,100}\.bot\)return null/,
-                    replace: ")return null"
-                },
-                // capture return value
-                {
-                    match: /(?<type>\w{1,100})=(?<user>\w{1,100}).isClyde\(\)\?(?:.{1,100})\.AI:(?:.{1,100}).BOT;/,
-                    replace: "$&$<type> = $self.getTag({user: $<user>, channel: arguments[0].channel, origType: $<user>.isBot ? $<type> : null, location: 'not-chat' }); if (null == $<type>) return null;"
-                }
-            ]
+            replacement: {
+                match: /\|\|!(?<user>\w{1,100})\.bot\)return null;let (?<tag>\w{1,100})=(?<bot>[\w.]+);/,
+                replace: ")return null; let $<tag> = $self.getTag({user: $<user>, channel: arguments[0].channel, origType: $<user>.isBot ? $<bot> : null, location: 'not-chat' }); if (null == $<tag>) return null;"
+            }
         },
         // pass channel id down props to be used in profiles
         {
