@@ -330,7 +330,7 @@ export default definePlugin({
         message, user, channelId, origType, location, channel
     }: {
         message?: Message,
-        user: User & { isClyde(): boolean; },
+        user: User,
         channel?: Channel & { isForumPost(): boolean; isMediaPost(): boolean; },
         channelId?: string;
         origType?: number;
@@ -340,8 +340,6 @@ export default definePlugin({
             return null;
         if (location === "chat" && user.id === "1")
             return Tag.Types.OFFICIAL;
-        if (user.isClyde())
-            return Tag.Types.AI;
 
         let type = typeof origType === "number" ? origType : null;
 
